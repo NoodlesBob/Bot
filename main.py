@@ -9,13 +9,13 @@ from threading import Thread
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = os.getenv("ADMIN_ID")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
-COMMENTS_GROUP_ID = -1002180841211  # ID групи, прив'язаної до каналу
+COMMENTS_GROUP_ID = -1002180841211  # ID групи обговорень
 BOT_USERNAME = "Office_GPTUA_bot"
 
-if not BOT_TOKEN or not ADMIN_ID or not CHANNEL_ID or not COMMENTS_GROUP_ID:
-    raise ValueError("Токен бота, ID адміністратора, ID каналу або ID групи не встановлено!")
+if not BOT_TOKEN or not ADMIN_ID or not CHANNEL_ID:
+    raise ValueError("Токен бота, ID адміністратора або ID каналу не встановлено!")
 
-bot = Bot(token=BOT_TOKEN, parse_mode="HTML")  # HTML-форматування
+bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
 dp = Dispatcher()
 
 pending_messages = {}
@@ -70,7 +70,8 @@ async def approve_news(callback: CallbackQuery):
         sent_message = await bot.send_message(CHANNEL_ID, text=message_data["caption"], parse_mode="HTML")
 
     if sent_message:
-        await bot.send_message(CHANNEL_ID, "💬 Ви можете залишати коментарі до цієї новини!", message_thread_id=sent_message.message_id)
+        # Примусове створення коментарів у прив'язаній групі
+        await bot.send_message(COMMENTS_GROUP_ID, f"💬 Обговорення новини:", reply_to_message_id=sent_message.message_id)
     
     await callback.answer("✅ Новина опублікована!")
 
