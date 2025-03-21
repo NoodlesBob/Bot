@@ -12,10 +12,9 @@ logger = logging.getLogger(__name__)
 # Конфігурація
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # Токен бота зберігається у змінній середовища
 ADMIN_ID = int(os.getenv("ADMIN_ID"))  # ID адміністратора
-CHANNEL_ID = os.getenv("CHANNEL_ID")  # ID каналу для публікацій
-COMMENTS_GROUP_ID = -1002180841211  # ID прив'язаної групи для обговорень
+HIDDEN_CHANNEL_ID = -1002570163026  # ID прихованого каналу для модерації новин (не засекречено)
 
-if not BOT_TOKEN or not ADMIN_ID or not CHANNEL_ID or not COMMENTS_GROUP_ID:
+if not BOT_TOKEN or not ADMIN_ID:
     raise ValueError("Необхідні змінні середовища не задані!")
 
 # Ініціалізація бота
@@ -31,7 +30,7 @@ INSTRUCTION_TEXT = (
     "🔹 Надішліть текст, фото, відео або документ із вашою новиною.\n"
     "🔹 Якщо новина містить посилання, надішліть їх окремо, щоб зберегти правильне форматування.\n"
     "🔹 Адміністратор перегляне вашу новину.\n"
-    "🔹 Після затвердження ваша новина буде опублікована в каналі [ChatGPT Ukraine](https://t.me/ChatGPT_in_Ukraine).\n\n"
+    "🔹 Після затвердження ваша новина буде опублікована в основному каналі.\n\n"
     "🛠 *Доступні команди:*\n"
     "/start - Почати роботу з ботом\n"
     "/help - Як працює бот"
@@ -41,8 +40,7 @@ INSTRUCTION_TEXT = (
 @dp.message(Command("start"))
 async def send_welcome(message: Message):
     await message.answer(
-        "👋 Вітаємо в боті *ChatGPT Ukraine*! Ознайомтеся з інструкцією нижче та надсилайте свої новини:\n\n"
-        + INSTRUCTION_TEXT,
+        "👋 Вітаємо в боті! Ознайомтеся з інструкцією нижче:\n\n" + INSTRUCTION_TEXT,
         parse_mode="Markdown"
     )
 
@@ -113,45 +111,43 @@ async def approve_news(callback_query: CallbackQuery):
 
     message_data = pending_messages.pop(message_id)
 
-    # Додаємо call-to-action з анкором
-    call_to_action = (
-        f"{message_data['caption']}\n\n"
-        "💬 Поділіться власною новиною! Натисніть на [Надіслати Новину](https://t.me/Office_GPTUA_bot) "
-        "і розкажіть нам свою історію."
-    )
-
+    # Додаємо новину до прихованого каналу
     try:
         if message_data["media_type"] == ContentType.PHOTO:
             await bot.send_photo(
-                CHANNEL_ID,
+                HIDDEN_CHANNEL_ID,
                 photo=message_data["file_id"],
-                caption=call_to_action,
-                parse_mode="Markdown"
+                caption=message_data["caption"],
+                parse_mode="Markdown",
+                disable_notification=True  # Надсилає новину без сповіщення
             )
         elif message_data["media_type"] == ContentType.VIDEO:
             await bot.send_video(
-                CHANNEL_ID,
+                HIDDEN_CHANNEL_ID,
                 video=message_data["file_id"],
-                caption=call_to_action,
-                parse_mode="Markdown"
+                caption=message_data["caption"],
+                parse_mode="Markdown",
+                disable_notification=True
             )
         elif message_data["media_type"] == ContentType.DOCUMENT:
             await bot.send_document(
-                CHANNEL_ID,
+                HIDDEN_CHANNEL_ID,
                 document=message_data["file_id"],
-                caption=call_to_action,
-                parse_mode="Markdown"
+                caption=message_data["caption"],
+                parse_mode="Markdown",
+                disable_notification=True
             )
         else:
             await bot.send_message(
-                CHANNEL_ID,
-                text=call_to_action,
-                parse_mode="Markdown"
+                HIDDEN_CHANNEL_ID,
+                text=message_data["caption"],
+                parse_mode="Markdown",
+                disable_notification=True
             )
-        await callback_query.answer("✅ Новина опублікована!")
+        await callback_query.answer("✅ Новина додана до прихованого каналу!")
     except Exception as e:
-        logger.error(f"Помилка при публікації новини: {e}")
-        await callback_query.answer("❌ Помилка публікації.")
+        logger.error(f"Помилка при додаванні до прихованого каналу: {e}")
+        await callback_query.answer("❌ Помилка.")
 
 # Відхилення новини
 @dp.callback_query(lambda c: c.data and c.data.startswith("reject"))
