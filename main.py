@@ -17,7 +17,7 @@ if not BOT_TOKEN or not ADMIN_ID or not CHANNEL_ID:
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-pending_messages = {}  # Для новин, що очікують модерації
+pending_messages = {}  # Словник для новин, що очікують модерації
 
 # Генерація кнопок модерації
 def generate_approve_keyboard(message_id: int):
@@ -29,10 +29,10 @@ def generate_approve_keyboard(message_id: int):
 # Генерація кнопки для посту
 def generate_post_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💌 Надіслати Новину", url=f"https://t.me/{BOT_USERNAME}?start=contact_author")]
+        [InlineKeyboardButton(text="📤 Надіслати Новину", url=f"https://t.me/{BOT_USERNAME}?start=contact_author")]
     ])
 
-# Прийом новин (надсилає на модерацію)
+# Прийом новин (надсилається на модерацію адміну)
 @dp.message(F.content_type.in_({ContentType.TEXT, ContentType.PHOTO, ContentType.VIDEO, ContentType.DOCUMENT}))
 async def handle_news(message: Message):
     pending_messages[message.message_id] = {
