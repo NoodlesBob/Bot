@@ -9,7 +9,7 @@ from threading import Thread
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = os.getenv("ADMIN_ID")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
-BOT_USERNAME = "YourBotUsername"  # Вкажіть тут ім'я вашого бота
+BOT_USERNAME = "Office_GPTUA_bot"  # Вкажіть тут ім'я вашого бота
 
 if not BOT_TOKEN or not ADMIN_ID or not CHANNEL_ID:
     raise ValueError("Токен бота, ID адміністратора або ID каналу не встановлено у змінних середовища!")
