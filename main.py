@@ -9,7 +9,7 @@ from threading import Thread
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = os.getenv("ADMIN_ID")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
-COMMENTS_GROUP_ID = os.getenv("1002180841211")  # ID групи, прив'язаної до каналу
+COMMENTS_GROUP_ID = -1002180841211  # ID групи, прив'язаної до каналу
 BOT_USERNAME = "Office_GPTUA_bot"
 
 if not BOT_TOKEN or not ADMIN_ID or not CHANNEL_ID or not COMMENTS_GROUP_ID:
@@ -42,13 +42,13 @@ async def handle_news(message: Message):
     admin_text = f"📝 <b>Новина від @{message.from_user.username or 'аноніма'}:</b>\n{pending_messages[message.message_id]['caption']}"
 
     if message.content_type == ContentType.PHOTO:
-        await bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=admin_text, reply_markup=generate_approve_keyboard(message.message_id))
+        await bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=admin_text, parse_mode="HTML", reply_markup=generate_approve_keyboard(message.message_id))
     elif message.content_type == ContentType.VIDEO:
-        await bot.send_video(ADMIN_ID, message.video.file_id, caption=admin_text, reply_markup=generate_approve_keyboard(message.message_id))
+        await bot.send_video(ADMIN_ID, message.video.file_id, caption=admin_text, parse_mode="HTML", reply_markup=generate_approve_keyboard(message.message_id))
     elif message.content_type == ContentType.DOCUMENT:
-        await bot.send_document(ADMIN_ID, message.document.file_id, caption=admin_text, reply_markup=generate_approve_keyboard(message.message_id))
+        await bot.send_document(ADMIN_ID, message.document.file_id, caption=admin_text, parse_mode="HTML", reply_markup=generate_approve_keyboard(message.message_id))
     else:
-        await bot.send_message(ADMIN_ID, admin_text, reply_markup=generate_approve_keyboard(message.message_id))
+        await bot.send_message(ADMIN_ID, admin_text, parse_mode="HTML", reply_markup=generate_approve_keyboard(message.message_id))
 
 @dp.callback_query(F.data.startswith("approve"))
 async def approve_news(callback: CallbackQuery):
@@ -61,13 +61,13 @@ async def approve_news(callback: CallbackQuery):
 
     sent_message = None
     if message_data["content_type"] == ContentType.PHOTO:
-        sent_message = await bot.send_photo(CHANNEL_ID, photo=message_data["file_id"], caption=message_data["caption"])
+        sent_message = await bot.send_photo(CHANNEL_ID, photo=message_data["file_id"], caption=message_data["caption"], parse_mode="HTML")
     elif message_data["content_type"] == ContentType.VIDEO:
-        sent_message = await bot.send_video(CHANNEL_ID, video=message_data["file_id"], caption=message_data["caption"])
+        sent_message = await bot.send_video(CHANNEL_ID, video=message_data["file_id"], caption=message_data["caption"], parse_mode="HTML")
     elif message_data["content_type"] == ContentType.DOCUMENT:
-        sent_message = await bot.send_document(CHANNEL_ID, document=message_data["file_id"], caption=message_data["caption"])
+        sent_message = await bot.send_document(CHANNEL_ID, document=message_data["file_id"], caption=message_data["caption"], parse_mode="HTML")
     else:
-        sent_message = await bot.send_message(CHANNEL_ID, text=message_data["caption"])
+        sent_message = await bot.send_message(CHANNEL_ID, text=message_data["caption"], parse_mode="HTML")
 
     if sent_message:
         await bot.send_message(CHANNEL_ID, "💬 Ви можете залишати коментарі до цієї новини!", message_thread_id=sent_message.message_id)
