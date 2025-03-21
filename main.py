@@ -27,7 +27,6 @@ pending_messages = {}
 
 # Інструкція
 INSTRUCTION_TEXT = (
-    "👋 Вітаємо в боті ChatGPT Ukraine!"
     "📋 *Як працює бот ChatGPT Ukraine:*\n\n"
     "🔹 Надішліть текст, фото, відео або документ із вашою новиною.\n"
     "🔹 Якщо новина містить посилання, надішліть їх окремо, щоб зберегти правильне форматування.\n"
@@ -37,16 +36,6 @@ INSTRUCTION_TEXT = (
     "/start - Почати роботу з ботом\n"
     "/help - Як працює бот"
 )
-
-# Кнопки для адміністратора
-def generate_approve_keyboard(message_id: int):
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Затвердити", callback_data=f"approve:{message_id}")],
-            [InlineKeyboardButton(text="❌ Відхилити", callback_data=f"reject:{message_id}")],
-            [InlineKeyboardButton(text="✏️ Змінити", callback_data=f"edit:{message_id}")]
-        ]
-    )
 
 # Привітання при команді /start
 @dp.message(Command("start"))
@@ -104,6 +93,16 @@ async def handle_news(message: Message):
     except Exception as e:
         logger.error(f"Помилка при відправленні новини адміністратору: {e}")
 
+# Кнопки для адміністратора
+def generate_approve_keyboard(message_id: int):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Затвердити", callback_data=f"approve:{message_id}")],
+            [InlineKeyboardButton(text="❌ Відхилити", callback_data=f"reject:{message_id}")],
+            [InlineKeyboardButton(text="✏️ Змінити", callback_data=f"edit:{message_id}")]
+        ]
+    )
+
 # Затвердження новини
 @dp.callback_query(lambda c: c.data and c.data.startswith("approve"))
 async def approve_news(callback_query: CallbackQuery):
@@ -113,29 +112,41 @@ async def approve_news(callback_query: CallbackQuery):
         return
 
     message_data = pending_messages.pop(message_id)
+
+    # Додаємо call-to-action з анкором
+    call_to_action = (
+        f"{message_data['caption']}\n\n"
+        "💬 Поділіться власною новиною! Натисніть на [Надіслати Новину](https://t.me/Office_GPTUA_bot) "
+        "і розкажіть нам свою історію."
+    )
+
     try:
         if message_data["media_type"] == ContentType.PHOTO:
             await bot.send_photo(
                 CHANNEL_ID,
                 photo=message_data["file_id"],
-                caption=message_data["caption"]
+                caption=call_to_action,
+                parse_mode="Markdown"
             )
         elif message_data["media_type"] == ContentType.VIDEO:
             await bot.send_video(
                 CHANNEL_ID,
                 video=message_data["file_id"],
-                caption=message_data["caption"]
+                caption=call_to_action,
+                parse_mode="Markdown"
             )
         elif message_data["media_type"] == ContentType.DOCUMENT:
             await bot.send_document(
                 CHANNEL_ID,
                 document=message_data["file_id"],
-                caption=message_data["caption"]
+                caption=call_to_action,
+                parse_mode="Markdown"
             )
         else:
             await bot.send_message(
                 CHANNEL_ID,
-                text=message_data["caption"]
+                text=call_to_action,
+                parse_mode="Markdown"
             )
         await callback_query.answer("✅ Новина опублікована!")
     except Exception as e:
