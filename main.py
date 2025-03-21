@@ -26,6 +26,12 @@ def generate_approve_keyboard(message_id: int):
         [InlineKeyboardButton(text="✏️ Змінити", callback_data=f"edit:{message_id}")]
     ])
 
+# Генерація кнопки для посту
+def generate_post_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💌 Написати автору", url=f"https://t.me/{bot.username}?start=contact_author")]
+    ])
+
 # Прийом новин
 @dp.message(F.content_type.in_({ContentType.TEXT, ContentType.PHOTO, ContentType.VIDEO, ContentType.DOCUMENT}))
 async def handle_news(message: Message):
@@ -57,13 +63,32 @@ async def approve_news(callback: CallbackQuery):
     message_data = pending_messages.pop(int(message_id), None)
     if message_data:
         if message_data["content_type"] == ContentType.PHOTO:
-            await bot.send_photo(CHANNEL_ID, photo=message_data["file_id"], caption=message_data["caption"])
+            await bot.send_photo(
+                CHANNEL_ID, 
+                photo=message_data["file_id"], 
+                caption=message_data["caption"], 
+                reply_markup=generate_post_keyboard()
+            )
         elif message_data["content_type"] == ContentType.VIDEO:
-            await bot.send_video(CHANNEL_ID, video=message_data["file_id"], caption=message_data["caption"])
+            await bot.send_video(
+                CHANNEL_ID, 
+                video=message_data["file_id"], 
+                caption=message_data["caption"], 
+                reply_markup=generate_post_keyboard()
+            )
         elif message_data["content_type"] == ContentType.DOCUMENT:
-            await bot.send_document(CHANNEL_ID, document=message_data["file_id"], caption=message_data["caption"])
+            await bot.send_document(
+                CHANNEL_ID, 
+                document=message_data["file_id"], 
+                caption=message_data["caption"], 
+                reply_markup=generate_post_keyboard()
+            )
         else:
-            await bot.send_message(CHANNEL_ID, text=message_data["caption"])
+            await bot.send_message(
+                CHANNEL_ID, 
+                text=message_data["caption"], 
+                reply_markup=generate_post_keyboard()
+            )
         await callback.answer("✅ Новина опублікована!")
     else:
         await callback.answer("❌ Новина не знайдена!")
