@@ -14,7 +14,7 @@ BOT_USERNAME = "Office_GPTUA_bot"  # Ім'я вашого бота
 if not BOT_TOKEN or not ADMIN_ID or not CHANNEL_ID:
     raise ValueError("Токен бота, ID адміністратора або ID каналу не встановлено у змінних середовища!")
 
-bot = Bot(token=BOT_TOKEN, parse_mode="HTML")  # Обов’язково активуємо HTML для підтримки форматування
+bot = Bot(token=BOT_TOKEN, parse_mode="HTML")  # HTML для форматування
 dp = Dispatcher()
 
 pending_messages = {}  # Словник для новин, що очікують модерації
@@ -36,7 +36,7 @@ def generate_post_keyboard():
 # Прийом новин (відправляється на модерацію адміну)
 @dp.message(F.content_type.in_({ContentType.TEXT, ContentType.PHOTO, ContentType.VIDEO, ContentType.DOCUMENT}))
 async def handle_news(message: Message):
-    # Збереження новини з форматуванням
+    # Збереження новини з усім форматуванням
     pending_messages[message.message_id] = {
         "content_type": message.content_type,
         "file_id": (
@@ -44,12 +44,12 @@ async def handle_news(message: Message):
             message.video.file_id if message.video else
             message.document.file_id if message.document else None
         ),
-        "caption": message.html_text or message.caption or "Новина без тексту"
+        "caption": message.html_text or message.caption or "Новина без тексту"  # Використовується HTML
     }
     await message.answer("✅ Ваше повідомлення надіслано на модерацію!")
     admin_text = f"📝 <b>Новина від @{message.from_user.username or 'аноніма'}:</b>\n{pending_messages[message.message_id]['caption']}"
 
-    # Відправка повідомлення адміністратору з форматуванням
+    # Надсилання адміністратору
     if message.content_type == ContentType.PHOTO:
         await bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=admin_text, reply_markup=generate_approve_keyboard(message.message_id))
     elif message.content_type == ContentType.VIDEO:
@@ -69,7 +69,7 @@ async def approve_news(callback: CallbackQuery):
         await callback.answer("❌ Новина не знайдена!")
         return
 
-    # Публікація новини у канал із збереженням форматування
+    # Публікація новини у канал із збереженим форматуванням
     if message_data["content_type"] == ContentType.PHOTO:
         await bot.send_photo(
             CHANNEL_ID,
@@ -121,11 +121,11 @@ async def edit_news(callback: CallbackQuery):
         await callback.answer("❌ Новина не знайдена!")
         return
 
-    await callback.message.answer("✏️ Введіть новий текст для новини:")
+    await callback.message.answer("✏️ Введіть новий текст для новини (з форматуванням):")
 
     @dp.message(F.text)
     async def handle_edit_response(new_message: Message):
-        message_data["caption"] = new_message.html_text  # Збереження форматування тексту
+        message_data["caption"] = new_message.html_text  # Збереження форматування
         pending_messages[int(message_id)] = message_data
         await new_message.answer("✅ Текст новини оновлено!")
         await bot.send_message(
