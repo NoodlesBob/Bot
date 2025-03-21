@@ -70,8 +70,8 @@ async def approve_news(callback: CallbackQuery):
         sent_message = await bot.send_message(CHANNEL_ID, text=message_data["caption"], parse_mode="HTML")
 
     if sent_message:
-        # Примусове створення коментарів у прив'язаній групі без модерації
-        await bot.send_message(COMMENTS_GROUP_ID, f"💬 Обговорення новини:", reply_to_message_id=sent_message.message_id)
+        # Заміна "Надіслати Новину" на "Коментувати"
+        await bot.send_message(COMMENTS_GROUP_ID, "💬 Коментувати:", reply_to_message_id=sent_message.message_id)
     
     await callback.answer("✅ Новина опублікована!")
 
