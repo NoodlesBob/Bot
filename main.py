@@ -10,9 +10,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Конфігурація
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # Токен бота зберігається у змінній середовища
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Токен бота
 ADMIN_ID = int(os.getenv("ADMIN_ID"))  # ID адміністратора
-HIDDEN_CHANNEL_ID = -1002570163026  # ID прихованого каналу для модерації новин (не засекречено)
+HIDDEN_CHANNEL_ID = -1002570163026  # ID прихованого каналу для модерації новин
 
 if not BOT_TOKEN or not ADMIN_ID:
     raise ValueError("Необхідні змінні середовища не задані!")
@@ -91,7 +91,7 @@ async def handle_news(message: Message):
     except Exception as e:
         logger.error(f"Помилка при відправленні новини адміністратору: {e}")
 
-# Кнопки для адміністратора
+# Генерація кнопок для адміністратора
 def generate_approve_keyboard(message_id: int):
     return InlineKeyboardMarkup(
         inline_keyboard=[
