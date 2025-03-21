@@ -1,24 +1,30 @@
-import os
 import asyncio
+import logging
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, ContentType, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.filters import Command
-import logging
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.bot import DefaultBotProperties
+import os
 
 # Логування
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Конфігурація
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # Токен бота
-ADMIN_ID = os.getenv("ADMIN_ID")  # ID адміністратора
-HIDDEN_CHANNEL_ID = -1002570163026  # ID прихованого каналу
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Токен вашого бота
+ADMIN_ID = int(os.getenv("ADMIN_ID"))  # ID адміністратора
+HIDDEN_CHANNEL_ID = int(os.getenv("HIDDEN_CHANNEL_ID"))  # ID прихованого каналу
 
 if not BOT_TOKEN or not ADMIN_ID or not HIDDEN_CHANNEL_ID:
-    raise ValueError("Токен бота, ID адміністратора або ID каналу не встановлено у змінних середовища!")
+    raise ValueError("BOT_TOKEN, ADMIN_ID або HIDDEN_CHANNEL_ID не встановлено у змінних середовища!")
 
 # Ініціалізація бота
-bot = Bot(token=BOT_TOKEN)
+bot = Bot(
+    token=BOT_TOKEN,
+    session=AiohttpSession(),
+    default=DefaultBotProperties(parse_mode="HTML")
+)
 dp = Dispatcher()
 
 # Список для зберігання новин, які очікують модерації
@@ -73,28 +79,32 @@ async def handle_news(message: Message):
     await message.answer("✅ Твоя новина надіслана на модерацію!")
 
     try:
-        if message.text:
-            admin_message = f"📝 Новина від @{message.from_user.username or 'аноніма'}:\n{message.text}"
-            await bot.send_message(int(ADMIN_ID), admin_message, reply_markup=generate_approve_keyboard(message.message_id))
-        elif message.photo:
+        admin_message = f"📝 Новина від @{message.from_user.username or 'аноніма'}:\n{pending_messages[message.message_id]['caption']}"
+        if message.photo:
             await bot.send_photo(
-                int(ADMIN_ID),
+                ADMIN_ID,
                 photo=message.photo[-1].file_id,
-                caption=pending_messages[message.message_id]["caption"],
+                caption=admin_message,
                 reply_markup=generate_approve_keyboard(message.message_id)
             )
         elif message.video:
             await bot.send_video(
-                int(ADMIN_ID),
+                ADMIN_ID,
                 video=message.video.file_id,
-                caption=pending_messages[message.message_id]["caption"],
+                caption=admin_message,
                 reply_markup=generate_approve_keyboard(message.message_id)
             )
         elif message.document:
             await bot.send_document(
-                int(ADMIN_ID),
+                ADMIN_ID,
                 document=message.document.file_id,
-                caption=pending_messages[message.message_id]["caption"],
+                caption=admin_message,
+                reply_markup=generate_approve_keyboard(message.message_id)
+            )
+        else:
+            await bot.send_message(
+                ADMIN_ID,
+                admin_message,
                 reply_markup=generate_approve_keyboard(message.message_id)
             )
     except Exception as e:
@@ -147,29 +157,6 @@ async def reject_news(callback: CallbackQuery):
     if pending_messages.pop(int(message_id), None):
         await callback.answer("❌ Новина відхилена.")
         await callback.message.edit_text("❌ Ця новина була відхилена.")
-    else:
-        await callback.answer("❌ Новина не знайдена або вже оброблена!")
-
-# Редагування новини
-@dp.callback_query(F.data.startswith("edit"))
-async def edit_news(callback: CallbackQuery):
-    global pending_messages
-    _, message_id = callback.data.split(":")
-    message_data = pending_messages.get(int(message_id))
-
-    if message_data:
-        await callback.message.answer("✏️ Введіть новий текст для новини. Медійний файл залишиться без змін.")
-
-        @dp.message(F.text)
-        async def handle_edit_response(new_message: Message):
-            updated_text = new_message.text
-            message_data["caption"] = updated_text
-            try:
-                pending_messages[int(message_id)] = message_data
-                await new_message.answer("✅ Текст успішно оновлено, медіа залишено без змін.")
-            except Exception as e:
-                logger.error(f"Помилка редагування новини: {e}")
-                await new_message.answer("❌ Сталася помилка під час редагування.")
     else:
         await callback.answer("❌ Новина не знайдена або вже оброблена!")
 
