@@ -28,15 +28,10 @@ def generate_approve_keyboard(message_id: int):
         [InlineKeyboardButton(text="✏️ Редагувати", callback_data=f"edit:{message_id}")]
     ])
 
-# Генерація кнопок для публікації
-def generate_post_keyboard():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📤 Надіслати Новину", url=f"https://t.me/{BOT_USERNAME}?start=contact_author")]
-    ])
-
 # Прийом новин від користувача
 @dp.message(F.content_type.in_({ContentType.TEXT, ContentType.PHOTO, ContentType.VIDEO, ContentType.DOCUMENT}))
 async def handle_news(message: Message):
+    # Збереження новини
     pending_messages[message.message_id] = {
         "content_type": message.content_type,
         "file_id": (
@@ -71,16 +66,21 @@ async def approve_news(callback: CallbackQuery):
 
     sent_message = None
     if message_data["content_type"] == ContentType.PHOTO:
-        sent_message = await bot.send_photo(CHANNEL_ID, photo=message_data["file_id"], caption=message_data["caption"])
+        sent_message = await bot.send_photo(CHANNEL_ID, photo=message_data["file_id"], caption=message_data["caption"], parse_mode="HTML")
     elif message_data["content_type"] == ContentType.VIDEO:
-        sent_message = await bot.send_video(CHANNEL_ID, video=message_data["file_id"], caption=message_data["caption"])
+        sent_message = await bot.send_video(CHANNEL_ID, video=message_data["file_id"], caption=message_data["caption"], parse_mode="HTML")
     elif message_data["content_type"] == ContentType.DOCUMENT:
-        sent_message = await bot.send_document(CHANNEL_ID, document=message_data["file_id"], caption=message_data["caption"])
+        sent_message = await bot.send_document(CHANNEL_ID, document=message_data["file_id"], caption=message_data["caption"], parse_mode="HTML")
     else:
-        sent_message = await bot.send_message(CHANNEL_ID, text=message_data["caption"])
+        sent_message = await bot.send_message(CHANNEL_ID, text=message_data["caption"], parse_mode="HTML")
 
     if sent_message:
-        await bot.send_message(COMMENTS_GROUP_ID, f"💬 Обговорення новини:", reply_to_message_id=sent_message.message_id)
+        # Прив'язка обговорення до каналу
+        await bot.send_message(
+            COMMENTS_GROUP_ID,
+            f"💬 Обговорення новини:",
+            reply_to_message_id=sent_message.message_id
+        )
 
     await callback.answer("✅ Новина опублікована!")
 
