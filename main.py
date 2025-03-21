@@ -28,12 +28,6 @@ def generate_approve_keyboard(message_id: int):
         [InlineKeyboardButton(text="✏️ Редагувати", callback_data=f"edit:{message_id}")]
     ])
 
-# Генерація кнопок для публікації
-def generate_post_keyboard():
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📤 Надіслати Новину", url=f"https://t.me/{BOT_USERNAME}?start=contact_author")]
-    ])
-
 # Прийом новин від користувача
 @dp.message(F.content_type.in_({ContentType.TEXT, ContentType.PHOTO, ContentType.VIDEO, ContentType.DOCUMENT}))
 async def handle_news(message: Message):
@@ -81,6 +75,7 @@ async def approve_news(callback: CallbackQuery):
         sent_message = await bot.send_message(CHANNEL_ID, text=message_data["caption"], parse_mode="HTML")
 
     if sent_message:
+        # Прив'язка обговорення до каналу
         await bot.send_message(
             COMMENTS_GROUP_ID,
             f"💬 Обговорення новини:",
