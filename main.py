@@ -54,7 +54,8 @@ async def handle_news(message: Message):
             message.video.file_id if message.video else
             message.document.file_id if message.document else None
         ),
-        "caption": message.text or message.caption or "📩 Повідомлення без тексту"
+        "caption": message.text or message.caption or "📩 Повідомлення без тексту",
+        "user": message.from_user.id,
     }
 
     await message.answer("✅ Твоя новина надіслана на модерацію.")
@@ -101,10 +102,30 @@ def generate_approve_keyboard(message_id: int):
         ]
     )
 
+# Функція редагування новини
+@dp.callback_query(lambda c: c.data and c.data.startswith("edit"))
+async def edit_news(callback_query: CallbackQuery):
+    _, message_id = callback_query.data.split(":")
+    message_id = int(message_id)
+
+    if message_id not in pending_messages:
+        await callback_query.answer("❌ Новина не знайдена для редагування!")
+        return
+
+    # Запит нового тексту для редагування
+    await callback_query.message.answer("✏️ Введіть новий текст для цієї новини:")
+    
+    @dp.message(lambda msg: msg.text)
+    async def process_edit(new_message: Message):
+        pending_messages[message_id]["caption"] = new_message.text
+        await new_message.answer("✅ Текст оновлено!")
+
 # Затвердження новини
 @dp.callback_query(lambda c: c.data and c.data.startswith("approve"))
 async def approve_news(callback_query: CallbackQuery):
-    message_id = int(callback_query.data.split(":")[1])
+    _, message_id = callback_query.data.split(":")
+    message_id = int(message_id)
+
     if message_id not in pending_messages:
         await callback_query.answer("❌ Новина не знайдена!")
         return
@@ -147,12 +168,14 @@ async def approve_news(callback_query: CallbackQuery):
         await callback_query.answer("✅ Новина додана до прихованого каналу!")
     except Exception as e:
         logger.error(f"Помилка при додаванні до прихованого каналу: {e}")
-        await callback_query.answer("❌ Помилка.")
+        await callback_query.answer("❌ Помилка!")
 
 # Відхилення новини
 @dp.callback_query(lambda c: c.data and c.data.startswith("reject"))
 async def reject_news(callback_query: CallbackQuery):
-    message_id = int(callback_query.data.split(":")[1])
+    _, message_id = callback_query.data.split(":")
+    message_id = int(message_id)
+
     if pending_messages.pop(message_id, None):
         await callback_query.answer("❌ Новина відхилена.")
     else:
