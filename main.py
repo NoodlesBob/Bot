@@ -2,6 +2,7 @@ import os
 import asyncio
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, ContentType, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.dispatcher.filters import CommandStart
 from flask import Flask
 from threading import Thread
 
@@ -27,6 +28,23 @@ def generate_approve_keyboard(message_id: int):
         [InlineKeyboardButton(text="❌ Відхилити", callback_data=f"reject:{message_id}")],
         [InlineKeyboardButton(text="✏️ Редагувати", callback_data=f"edit:{message_id}")]
     ])
+
+# Генерація привітального повідомлення
+welcome_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="📩 Надіслати Новину", callback_data="send_news")],
+    [InlineKeyboardButton(text="ℹ️ Про Бота", callback_data="about_bot")]
+])
+
+@dp.message(CommandStart())
+async def send_welcome(message: Message):
+    await message.answer(
+        "👋 Вітаю! Я бот для надсилання та модерації новин.\n"
+        "Ось доступні команди:\n"
+        "• 📩 Надіслати Новину\n"
+        "• ℹ️ Про Бота\n\n"
+        "Просто натисніть на відповідну кнопку нижче 👇",
+        reply_markup=welcome_keyboard
+    )
 
 # Прийом новин від користувача
 @dp.message(F.content_type.in_({ContentType.TEXT, ContentType.PHOTO, ContentType.VIDEO, ContentType.DOCUMENT}))
