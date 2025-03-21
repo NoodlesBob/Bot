@@ -71,7 +71,7 @@ async def approve_news(callback: CallbackQuery):
 
     if sent_message:
         # Заміна "Надіслати Новину" на "Коментувати"
-        await bot.send_message(COMMENTS_GROUP_ID, "💬 Коментувати:", reply_to_message_id=sent_message.message_id)
+        await bot.send_message(COMMENTS_GROUP_ID, "💬 Коментувати новину:", reply_to_message_id=sent_message.message_id)
     
     await callback.answer("✅ Новина опублікована!")
 
