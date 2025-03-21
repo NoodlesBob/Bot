@@ -9,7 +9,7 @@ from threading import Thread
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = os.getenv("ADMIN_ID")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
-COMMENTS_GROUP_ID = os.getenv("COMMENTS_GROUP_ID")  # ID групи, прив'язаної до каналу
+COMMENTS_GROUP_ID = os.getenv("1002180841211")  # ID групи, прив'язаної до каналу
 BOT_USERNAME = "Office_GPTUA_bot"
 
 if not BOT_TOKEN or not ADMIN_ID or not CHANNEL_ID or not COMMENTS_GROUP_ID:
