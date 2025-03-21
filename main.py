@@ -9,7 +9,7 @@ from threading import Thread
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = os.getenv("ADMIN_ID")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
-COMMENTS_GROUP_ID = -1002180841211  # ID прив'язаної групи для обговорень
+COMMENTS_GROUP_ID = -1002180841211  # ID групи для обговорень
 BOT_USERNAME = "Office_GPTUA_bot"
 
 if not BOT_TOKEN or not ADMIN_ID or not CHANNEL_ID or not COMMENTS_GROUP_ID:
@@ -18,7 +18,7 @@ if not BOT_TOKEN or not ADMIN_ID or not CHANNEL_ID or not COMMENTS_GROUP_ID:
 bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
 dp = Dispatcher()
 
-pending_messages = {}
+pending_messages = {}  # Словник для збереження новин на модерацію
 
 # Генерація кнопок модерації
 def generate_approve_keyboard(message_id: int):
@@ -28,10 +28,15 @@ def generate_approve_keyboard(message_id: int):
         [InlineKeyboardButton(text="✏️ Редагувати", callback_data=f"edit:{message_id}")]
     ])
 
-# Прийом новин
+# Генерація кнопок для публікації
+def generate_post_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📤 Надіслати Новину", url=f"https://t.me/{BOT_USERNAME}?start=contact_author")]
+    ])
+
+# Прийом новин від користувача
 @dp.message(F.content_type.in_({ContentType.TEXT, ContentType.PHOTO, ContentType.VIDEO, ContentType.DOCUMENT}))
 async def handle_news(message: Message):
-    # Збереження форматованого тексту
     pending_messages[message.message_id] = {
         "content_type": message.content_type,
         "file_id": (
@@ -42,40 +47,39 @@ async def handle_news(message: Message):
         "caption": message.html_text or message.caption or "Новина без тексту"
     }
 
-    # Надсилаємо адміністратору з HTML-форматуванням
     admin_text = f"📝 <b>Новина від @{message.from_user.username or 'аноніма'}:</b>\n{pending_messages[message.message_id]['caption']}"
-
     if message.content_type == ContentType.PHOTO:
-        await bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=admin_text, parse_mode="HTML", reply_markup=generate_approve_keyboard(message.message_id))
+        await bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=admin_text, reply_markup=generate_approve_keyboard(message.message_id))
     elif message.content_type == ContentType.VIDEO:
-        await bot.send_video(ADMIN_ID, message.video.file_id, caption=admin_text, parse_mode="HTML", reply_markup=generate_approve_keyboard(message.message_id))
+        await bot.send_video(ADMIN_ID, message.video.file_id, caption=admin_text, reply_markup=generate_approve_keyboard(message.message_id))
     elif message.content_type == ContentType.DOCUMENT:
-        await bot.send_document(ADMIN_ID, message.document.file_id, caption=admin_text, parse_mode="HTML", reply_markup=generate_approve_keyboard(message.message_id))
+        await bot.send_document(ADMIN_ID, message.document.file_id, caption=admin_text, reply_markup=generate_approve_keyboard(message.message_id))
     else:
-        await bot.send_message(ADMIN_ID, admin_text, parse_mode="HTML", reply_markup=generate_approve_keyboard(message.message_id))
+        await bot.send_message(ADMIN_ID, admin_text, reply_markup=generate_approve_keyboard(message.message_id))
+
+    await message.answer("✅ Ваше повідомлення надіслано на модерацію!")
 
 # Затвердження новини
 @dp.callback_query(F.data.startswith("approve"))
 async def approve_news(callback: CallbackQuery):
     _, message_id = callback.data.split(":")
     message_data = pending_messages.pop(int(message_id), None)
-    
+
     if not message_data:
         await callback.answer("❌ Новина не знайдена!")
         return
 
     sent_message = None
     if message_data["content_type"] == ContentType.PHOTO:
-        sent_message = await bot.send_photo(CHANNEL_ID, photo=message_data["file_id"], caption=message_data["caption"], parse_mode="HTML")
+        sent_message = await bot.send_photo(CHANNEL_ID, photo=message_data["file_id"], caption=message_data["caption"])
     elif message_data["content_type"] == ContentType.VIDEO:
-        sent_message = await bot.send_video(CHANNEL_ID, video=message_data["file_id"], caption=message_data["caption"], parse_mode="HTML")
+        sent_message = await bot.send_video(CHANNEL_ID, video=message_data["file_id"], caption=message_data["caption"])
     elif message_data["content_type"] == ContentType.DOCUMENT:
-        sent_message = await bot.send_document(CHANNEL_ID, document=message_data["file_id"], caption=message_data["caption"], parse_mode="HTML")
+        sent_message = await bot.send_document(CHANNEL_ID, document=message_data["file_id"], caption=message_data["caption"])
     else:
-        sent_message = await bot.send_message(CHANNEL_ID, text=message_data["caption"], parse_mode="HTML")
+        sent_message = await bot.send_message(CHANNEL_ID, text=message_data["caption"])
 
     if sent_message:
-        # Примусове створення коментарів
         await bot.send_message(COMMENTS_GROUP_ID, f"💬 Обговорення новини:", reply_to_message_id=sent_message.message_id)
 
     await callback.answer("✅ Новина опублікована!")
@@ -95,7 +99,7 @@ async def reject_news(callback: CallbackQuery):
 async def edit_news(callback: CallbackQuery):
     _, message_id = callback.data.split(":")
     message_data = pending_messages.get(int(message_id))
-    
+
     if not message_data:
         await callback.answer("❌ Новина не знайдена!")
         return
@@ -110,7 +114,6 @@ async def edit_news(callback: CallbackQuery):
         await bot.send_message(
             ADMIN_ID,
             f"📝 Оновлена новина:\n{message_data['caption']}",
-            parse_mode="HTML",
             reply_markup=generate_approve_keyboard(int(message_id))
         )
 
