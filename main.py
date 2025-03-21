@@ -14,7 +14,7 @@ BOT_USERNAME = "Office_GPTUA_bot"  # Ім'я вашого бота
 if not BOT_TOKEN or not ADMIN_ID or not CHANNEL_ID:
     raise ValueError("Токен бота, ID адміністратора або ID каналу не встановлено у змінних середовища!")
 
-bot = Bot(token=BOT_TOKEN, parse_mode="HTML")  # Встановлено HTML для збереження форматування
+bot = Bot(token=BOT_TOKEN, parse_mode="HTML")  # Встановлено HTML для збереження стилів
 dp = Dispatcher()
 
 pending_messages = {}  # Словник для новин, що очікують модерації
@@ -43,7 +43,7 @@ async def handle_news(message: Message):
             message.video.file_id if message.video else
             message.document.file_id if message.document else None
         ),
-        "caption": message.html_text or message.caption or "Новина без тексту"  # Збереження форматування
+        "caption": message.html_text or message.caption or "Новина без тексту"  # Збереження форматування тексту
     }
     await message.answer("✅ Ваше повідомлення надіслано на модерацію!")
     admin_text = f"📝 Новина від @{message.from_user.username or 'аноніма'}:\n{pending_messages[message.message_id]['caption']}"
@@ -67,7 +67,7 @@ async def approve_news(callback: CallbackQuery):
         await callback.answer("❌ Новина не знайдена!")
         return
 
-    # Публікація новини у канал
+    # Публікація новини у канал з форматуванням
     if message_data["content_type"] == ContentType.PHOTO:
         await bot.send_photo(
             CHANNEL_ID,
@@ -95,7 +95,7 @@ async def approve_news(callback: CallbackQuery):
             text=message_data["caption"],
             reply_markup=generate_post_keyboard()
         )
-    # Додаємо повідомлення для коментування
+    # Додаємо повідомлення для коментарів
     await bot.send_message(CHANNEL_ID, "💬 Ви можете залишати коментарі до цієї новини!")
 
     await callback.answer("✅ Новина опублікована!")
@@ -124,7 +124,7 @@ async def edit_news(callback: CallbackQuery):
 
     @dp.message(F.text)
     async def handle_edit_response(new_message: Message):
-        message_data["caption"] = new_message.html_text  # Збереження форматування
+        message_data["caption"] = new_message.html_text  # Збереження форматування тексту
         pending_messages[int(message_id)] = message_data
         await new_message.answer("✅ Текст новини оновлено!")
         await bot.send_message(
