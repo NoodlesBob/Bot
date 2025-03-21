@@ -32,7 +32,7 @@ def generate_post_keyboard():
         [InlineKeyboardButton(text="📤 Надіслати Новину", url=f"https://t.me/{BOT_USERNAME}?start=contact_author")]
     ])
 
-# Прийом новин (надсилається на модерацію адміну)
+# Прийом новин (відправляється на модерацію адміну)
 @dp.message(F.content_type.in_({ContentType.TEXT, ContentType.PHOTO, ContentType.VIDEO, ContentType.DOCUMENT}))
 async def handle_news(message: Message):
     pending_messages[message.message_id] = {
@@ -44,7 +44,7 @@ async def handle_news(message: Message):
         ),
         "caption": message.text or message.caption or "Новина без тексту"
     }
-    await message.answer("✅ Ваше повідомлення надіслане на модерацію!")
+    await message.answer("✅ Ваше повідомлення надіслано на модерацію!")
     admin_text = f"📝 Новина від @{message.from_user.username or 'аноніма'}:\n{pending_messages[message.message_id]['caption']}"
 
     if message.content_type == ContentType.PHOTO:
