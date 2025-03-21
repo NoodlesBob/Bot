@@ -23,7 +23,8 @@ pending_messages = {}  # Словник для новин, що очікують
 def generate_approve_keyboard(message_id: int):
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ Затвердити", callback_data=f"approve:{message_id}")],
-        [InlineKeyboardButton(text="❌ Відхилити", callback_data=f"reject:{message_id}")]
+        [InlineKeyboardButton(text="❌ Відхилити", callback_data=f"reject:{message_id}")],
+        [InlineKeyboardButton(text="✏️ Редагувати", callback_data=f"edit:{message_id}")]
     ])
 
 # Генерація кнопки для посту
@@ -105,6 +106,29 @@ async def reject_news(callback: CallbackQuery):
         await callback.answer("❌ Новина відхилена.")
     else:
         await callback.answer("❌ Новина не знайдена!")
+
+# Редагування новини
+@dp.callback_query(F.data.startswith("edit"))
+async def edit_news(callback: CallbackQuery):
+    _, message_id = callback.data.split(":")
+    message_data = pending_messages.get(int(message_id))
+    
+    if not message_data:
+        await callback.answer("❌ Новина не знайдена!")
+        return
+
+    await callback.message.answer("✏️ Введіть новий текст для новини:")
+
+    @dp.message(F.text)
+    async def handle_edit_response(new_message: Message):
+        message_data["caption"] = new_message.text
+        pending_messages[int(message_id)] = message_data
+        await new_message.answer("✅ Текст новини оновлено!")
+        await bot.send_message(
+            ADMIN_ID,
+            f"📝 Оновлена новина:\n{message_data['caption']}",
+            reply_markup=generate_approve_keyboard(int(message_id))
+        )
 
 # Головна функція
 async def main():
