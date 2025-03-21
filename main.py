@@ -9,6 +9,7 @@ from threading import Thread
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = os.getenv("ADMIN_ID")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
+BOT_USERNAME = "YourBotUsername"  # Задайте ім'я вашого бота тут
 
 if not BOT_TOKEN or not ADMIN_ID or not CHANNEL_ID:
     raise ValueError("Токен бота, ID адміністратора або ID каналу не встановлено у змінних середовища!")
@@ -29,7 +30,7 @@ def generate_approve_keyboard(message_id: int):
 # Генерація кнопки для посту
 def generate_post_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💌 Написати автору", url=f"https://t.me/{bot.username}?start=contact_author")]
+        [InlineKeyboardButton(text="💌 Написати автору", url=f"https://t.me/{BOT_USERNAME}?start=contact_author")]
     ])
 
 # Прийом новин
