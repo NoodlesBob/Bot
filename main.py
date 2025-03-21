@@ -1,93 +1,218 @@
-import os
 import asyncio
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, ContentType, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from flask import Flask
-from threading import Thread
+from aiogram.filters import Command
+import logging
+
+# Логування
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Конфігурація
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_ID = os.getenv("ADMIN_ID")
-CHANNEL_ID = os.getenv("CHANNEL_ID")
-COMMENTS_GROUP_ID = -1002180841211  # ID групи обговорень
-BOT_USERNAME = "Office_GPTUA_bot"
+BOT_TOKEN = "7757705270:AAFy_wrryE6_ERVtAt_iBk01IZ_hfvGSzQI"
+ADMIN_ID = 403857343  # Ваш ID
+CHANNEL_ID = "@ChatGPT_in_Ukraine"
 
-if not BOT_TOKEN or not ADMIN_ID or not CHANNEL_ID:
-    raise ValueError("Токен бота, ID адміністратора або ID каналу не встановлено!")
-
-bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
+# Ініціалізація бота
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
+# Список для зберігання новин, які очікують модерації
 pending_messages = {}
 
-def generate_approve_keyboard(message_id: int):
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Затвердити", callback_data=f"approve:{message_id}")],
-        [InlineKeyboardButton(text="❌ Відхилити", callback_data=f"reject:{message_id}")],
-        [InlineKeyboardButton(text="✏️ Редагувати", callback_data=f"edit:{message_id}")]
-    ])
+# Інструкція
+INSTRUCTION_TEXT = (
+    "📋 *Інструкція з використання бота:*\n\n"
+    "1️⃣ Надішліть текст, фото, відео або документ.\n"
+    "2️⃣ Адміністратор розгляне вашу новину.\n"
+    "3️⃣ Після затвердження ваша новина буде опублікована в каналі.\n\n"
+    "🔒 *Анонімність:*\n"
+    "Повідомлення є анонімними. Якщо ви хочете бути публічно згаданими, вкажіть це у тексті повідомлення.\n\n"
+    "🛠 *Основні команди:*\n"
+    "/start - Перезапустити бота\n"
+    "/help - Опис функцій бота\n"
+)
 
+# Кнопки для адміністратора
+def generate_approve_keyboard(message_id: int):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Затвердити", callback_data=f"approve:{message_id}")],
+            [InlineKeyboardButton(text="❌ Відхилити", callback_data=f"reject:{message_id}")],
+            [InlineKeyboardButton(text="✏️ Змінити", callback_data=f"edit:{message_id}")]
+        ]
+    )
+
+# Кнопка для каналу
+def generate_publish_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Надіслати Новину", url="https://t.me/Office_GPTUA_bot")]  # Посилання на бота
+        ]
+    )
+
+# Привітання при команді /start
+@dp.message(Command("start"))
+async def send_welcome(message: Message):
+    await message.answer(
+        "👋 Вітаємо в боті! Ознайомтеся з інструкцією нижче та надішліть свою новину.\n\n"
+        + INSTRUCTION_TEXT,
+        parse_mode="Markdown"
+    )
+
+# Обробка новин від користувачів
 @dp.message(F.content_type.in_({ContentType.TEXT, ContentType.PHOTO, ContentType.VIDEO, ContentType.DOCUMENT}))
 async def handle_news(message: Message):
+    global pending_messages
+    # Зберігаємо повідомлення для модерації
     pending_messages[message.message_id] = {
-        "content_type": message.content_type,
+        "message": message,
+        "media_type": message.content_type,
         "file_id": (
             message.photo[-1].file_id if message.photo else
             message.video.file_id if message.video else
             message.document.file_id if message.document else None
         ),
-        "caption": message.html_text or message.caption or "Новина без тексту"
+        "caption": message.text or message.caption or "📩 Повідомлення без тексту"
     }
-    await message.answer("✅ Ваше повідомлення надіслано на модерацію!")
-    admin_text = f"📝 <b>Новина від @{message.from_user.username or 'аноніма'}:</b>\n{pending_messages[message.message_id]['caption']}"
 
-    if message.content_type == ContentType.PHOTO:
-        await bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=admin_text, parse_mode="HTML", reply_markup=generate_approve_keyboard(message.message_id))
-    elif message.content_type == ContentType.VIDEO:
-        await bot.send_video(ADMIN_ID, message.video.file_id, caption=admin_text, parse_mode="HTML", reply_markup=generate_approve_keyboard(message.message_id))
-    elif message.content_type == ContentType.DOCUMENT:
-        await bot.send_document(ADMIN_ID, message.document.file_id, caption=admin_text, parse_mode="HTML", reply_markup=generate_approve_keyboard(message.message_id))
-    else:
-        await bot.send_message(ADMIN_ID, admin_text, parse_mode="HTML", reply_markup=generate_approve_keyboard(message.message_id))
+    await message.answer("✅ Твоя новина надіслана на модерацію.")
 
+    try:
+        if message.text:
+            admin_message = f"📝 Новина від @{message.from_user.username or 'аноніма'}:\n{message.text}"
+            await bot.send_message(ADMIN_ID, admin_message, reply_markup=generate_approve_keyboard(message.message_id))
+        elif message.photo:
+            await bot.send_photo(
+                ADMIN_ID,
+                photo=message.photo[-1].file_id,
+                caption=pending_messages[message.message_id]['caption'],
+                reply_markup=generate_approve_keyboard(message.message_id)
+            )
+        elif message.video:
+            await bot.send_video(
+                ADMIN_ID,
+                video=message.video.file_id,
+                caption=pending_messages[message.message_id]['caption'],
+                reply_markup=generate_approve_keyboard(message.message_id)
+            )
+        elif message.document:
+            await bot.send_document(
+                ADMIN_ID,
+                document=message.document.file_id,
+                caption=pending_messages[message.message_id]['caption'],
+                reply_markup=generate_approve_keyboard(message.message_id)
+            )
+    except Exception as e:
+        logger.error(f"Помилка при відправці новини адміністратору: {e}")
+
+# Затвердження новини
 @dp.callback_query(F.data.startswith("approve"))
 async def approve_news(callback: CallbackQuery):
+    global pending_messages
     _, message_id = callback.data.split(":")
     message_data = pending_messages.pop(int(message_id), None)
-    
-    if not message_data:
-        await callback.answer("❌ Новина не знайдена!")
-        return
 
-    sent_message = None
-    if message_data["content_type"] == ContentType.PHOTO:
-        sent_message = await bot.send_photo(CHANNEL_ID, photo=message_data["file_id"], caption=message_data["caption"], parse_mode="HTML")
-    elif message_data["content_type"] == ContentType.VIDEO:
-        sent_message = await bot.send_video(CHANNEL_ID, video=message_data["file_id"], caption=message_data["caption"], parse_mode="HTML")
-    elif message_data["content_type"] == ContentType.DOCUMENT:
-        sent_message = await bot.send_document(CHANNEL_ID, document=message_data["file_id"], caption=message_data["caption"], parse_mode="HTML")
+    if message_data:
+        try:
+            if message_data["media_type"] == ContentType.PHOTO:
+                await bot.send_photo(
+                    CHANNEL_ID,
+                    photo=message_data["file_id"],
+                    caption=message_data["caption"],
+                    reply_markup=generate_publish_keyboard()
+                )
+            elif message_data["media_type"] == ContentType.VIDEO:
+                await bot.send_video(
+                    CHANNEL_ID,
+                    video=message_data["file_id"],
+                    caption=message_data["caption"],
+                    reply_markup=generate_publish_keyboard()
+                )
+            elif message_data["media_type"] == ContentType.DOCUMENT:
+                await bot.send_document(
+                    CHANNEL_ID,
+                    document=message_data["file_id"],
+                    caption=message_data["caption"],
+                    reply_markup=generate_publish_keyboard()
+                )
+            else:
+                await bot.send_message(
+                    CHANNEL_ID,
+                    text=message_data["caption"],
+                    reply_markup=generate_publish_keyboard()
+                )
+            await callback.answer("✅ Новину опубліковано!")
+        except Exception as e:
+            logger.error(f"Помилка публікації новини: {e}")
+            await callback.answer(f"❌ Помилка публікації: {e}")
     else:
-        sent_message = await bot.send_message(CHANNEL_ID, text=message_data["caption"], parse_mode="HTML")
+        await callback.answer("❌ Повідомлення не знайдено або вже оброблено.")
 
-    if sent_message:
-        # Заміна "Надіслати Новину" на "Коментувати"
-        await bot.send_message(COMMENTS_GROUP_ID, "💬 Коментувати новину:", reply_to_message_id=sent_message.message_id)
-    
-    await callback.answer("✅ Новина опублікована!")
+# Редагування новини
+@dp.callback_query(F.data.startswith("edit"))
+async def edit_news(callback: CallbackQuery):
+    global pending_messages
+    _, message_id = callback.data.split(":")
+    message_data = pending_messages.get(int(message_id))
 
+    if message_data:
+        await callback.message.answer("✏️ Введіть новий текст для новини. Якщо хочете залишити зображення, просто змініть текст.")
+
+        @dp.message(F.text)
+        async def process_edit_response(new_message: Message):
+            updated_text = new_message.text  # Оновлюємо текст
+            message_data["caption"] = updated_text
+
+            try:
+                if message_data["media_type"] == ContentType.PHOTO:
+                    await bot.send_photo(
+                        ADMIN_ID,
+                        photo=message_data["file_id"],
+                        caption=updated_text,
+                        reply_markup=generate_approve_keyboard(int(message_id))
+                    )
+                elif message_data["media_type"] == ContentType.VIDEO:
+                    await bot.send_video(
+                        ADMIN_ID,
+                        video=message_data["file_id"],
+                        caption=updated_text,
+                        reply_markup=generate_approve_keyboard(int(message_id))
+                    )
+                elif message_data["media_type"] == ContentType.DOCUMENT:
+                    await bot.send_document(
+                        ADMIN_ID,
+                        document=message_data["file_id"],
+                        caption=updated_text,
+                        reply_markup=generate_approve_keyboard(int(message_id))
+                    )
+                else:
+                    await bot.send_message(
+                        ADMIN_ID,
+                        text=updated_text,
+                        reply_markup=generate_approve_keyboard(int(message_id))
+                    )
+                await new_message.answer("✅ Текст успішно оновлено.")
+            except Exception as e:
+                logger.error(f"Помилка при редагуванні новини: {e}")
+                await new_message.answer("❌ Сталася помилка при оновленні тексту.")
+    else:
+        await callback.answer("❌ Повідомлення не знайдено для редагування.")
+
+# Відхилення новини
+@dp.callback_query(F.data.startswith("reject"))
+async def reject_news(callback: CallbackQuery):
+    global pending_messages
+    _, message_id = callback.data.split(":")
+    if pending_messages.pop(int(message_id), None):
+        await callback.answer("❌ Новина відхилена.")
+    else:
+        await callback.answer("❌ Повідомлення не знайдено або вже оброблено.")
+
+# Головна функція
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "Bot is running!"
-
-def run_flask():
-    app.run(host="0.0.0.0", port=8080)
-
 if __name__ == "__main__":
-    Thread(target=run_flask).start()
     asyncio.run(main())
