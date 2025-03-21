@@ -20,6 +20,7 @@ bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
 dp = Dispatcher()
 
 pending_messages = {}  # Словник для збереження новин на модерацію
+user_greeted = set()  # Список користувачів, які отримали привітання
 
 # Генерація кнопок модерації
 def generate_approve_keyboard(message_id: int):
@@ -29,26 +30,26 @@ def generate_approve_keyboard(message_id: int):
         [InlineKeyboardButton(text="✏️ Редагувати", callback_data=f"edit:{message_id}")]
     ])
 
-# Генерація привітального повідомлення
-welcome_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="📩 Надіслати Новину", callback_data="send_news")],
-    [InlineKeyboardButton(text="ℹ️ Про Бота", callback_data="about_bot")]
-])
-
+# Привітальне повідомлення
 @dp.message(CommandStart())
 async def send_welcome(message: Message):
+    user_greeted.add(message.from_user.id)  # Додаємо користувача до списку привітаних
     await message.answer(
-        "👋 Вітаю! Я бот для надсилання та модерації новин.\n"
-        "Ось доступні команди:\n"
-        "• 📩 Надіслати Новину\n"
-        "• ℹ️ Про Бота\n\n"
-        "Просто натисніть на відповідну кнопку нижче 👇",
-        reply_markup=welcome_keyboard
+        "👋 Вітаю! Я бот для надсилання новин.\n\n"
+        "Щоб надіслати новину:\n"
+        "1️⃣ Введіть текст новини.\n"
+        "2️⃣ Надішліть його сюди, і я передам його на модерацію.\n\n"
+        "Після схвалення ваша новина буде опублікована.",
     )
 
 # Прийом новин від користувача
 @dp.message(F.content_type.in_({ContentType.TEXT, ContentType.PHOTO, ContentType.VIDEO, ContentType.DOCUMENT}))
 async def handle_news(message: Message):
+    # Відображаємо привітальне повідомлення лише один раз після тригера
+    if message.from_user.id not in user_greeted:
+        await send_welcome(message)
+        return
+
     # Збереження новини з повним форматуванням
     pending_messages[message.message_id] = {
         "content_type": message.content_type,
